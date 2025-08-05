@@ -1,0 +1,235 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Manage UPI IDs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5ff;
+            padding: 20px;
+        }
+        .box {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h2, h3, h4 {
+            text-align: center;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 6px;
+            border: 1px solid #aaa;
+        }
+        .toggle-password {
+            float: right;
+            margin-top: -35px;
+            margin-right: 10px;
+            cursor: pointer;
+            position: relative;
+            z-index: 2;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #009688;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px 0;
+        }
+        button:hover {
+            background-color: #00796b;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        li {
+            padding: 10px;
+            background: #e0f7fa;
+            margin: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 6px;
+        }
+        .hidden {
+            display: none;
+        }
+        .edit-input {
+            width: 65%;
+            padding: 6px;
+        }
+        .history-box {
+            background: #fff3e0;
+            padding: 10px;
+            margin-top: 20px;
+            border: 1px solid #ffb74d;
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .menu-bar {
+            text-align: right;
+        }
+        .menu-bar button {
+            background-color: #333;
+            margin-left: 5px;
+        }
+        .menu-bar button:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+
+<div class="box" id="loginBox">
+    <h2>Admin Login</h2>
+    <input type="text" id="username" placeholder="Username">
+    <div style="position: relative;">
+        <input type="password" id="password" placeholder="Password">
+        <span class="toggle-password" onclick="togglePassword('password')">👁️</span>
+    </div>
+    <button onclick="login()">Login</button>
+</div>
+
+<div class="box hidden" id="adminPanel">
+    <div class="menu-bar">
+        <button onclick="togglePasswordBox()">Change Password</button>
+    </div>
+    <h2>Manage UPI IDs</h2>
+    <input type="text" id="newUpiId" placeholder="Enter new UPI ID">
+    <button onclick="addUpi()">Add UPI ID</button>
+    <ul id="upiList"></ul>
+
+    <div id="passwordBox" class="hidden">
+        <h3>Change Password</h3>
+        <div style="position: relative;">
+            <input type="password" id="newPass" placeholder="New Password">
+            <span class="toggle-password" onclick="togglePassword('newPass')">👁️</span>
+        </div>
+        <button onclick="changePassword()">Update Password</button>
+    </div>
+
+    <div class="history-box">
+        <h4>History Log</h4>
+        <ul id="historyLog"></ul>
+    </div>
+</div>
+
+<script>
+    const DEFAULT_PASSWORD = "Samdy@1234";
+
+    function getTimestamp() {
+        return new Date().toLocaleString();
+    }
+
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        input.type = input.type === "password" ? "text" : "password";
+    }
+
+    function login() {
+        const user = document.getElementById('username').value;
+        const pass = document.getElementById('password').value;
+        const storedPass = localStorage.getItem("adminPass") || DEFAULT_PASSWORD;
+        if (user === "admin" && pass === storedPass) {
+            document.getElementById('loginBox').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            loadUpiList();
+            loadHistory();
+        } else {
+            alert("Invalid credentials");
+        }
+    }
+
+    function togglePasswordBox() {
+        const box = document.getElementById("passwordBox");
+        box.classList.toggle("hidden");
+    }
+
+    function loadUpiList() {
+        const list = document.getElementById("upiList");
+        list.innerHTML = "";
+        const upis = JSON.parse(localStorage.getItem("upiIds") || "[]");
+        upis.forEach((upi, index) => {
+            const li = document.createElement("li");
+            const input = document.createElement("input");
+            input.value = upi;
+            input.className = "edit-input";
+            input.onchange = () => updateUpi(index, input.value);
+            const btn = document.createElement("button");
+            btn.textContent = "Delete";
+            btn.onclick = () => deleteUpi(index);
+            li.appendChild(input);
+            li.appendChild(btn);
+            list.appendChild(li);
+        });
+    }
+
+    function addUpi() {
+        const input = document.getElementById("newUpiId");
+        const upi = input.value.trim();
+        if (!upi) return alert("Enter a valid UPI ID");
+        let upis = JSON.parse(localStorage.getItem("upiIds") || "[]");
+        upis.push(upi);
+        localStorage.setItem("upiIds", JSON.stringify(upis));
+        input.value = "";
+        logHistory("Added", upi);
+        loadUpiList();
+    }
+
+    function deleteUpi(index) {
+        let upis = JSON.parse(localStorage.getItem("upiIds") || "[]");
+        let deleted = upis.splice(index, 1)[0];
+        localStorage.setItem("upiIds", JSON.stringify(upis));
+        logHistory("Deleted", deleted);
+        loadUpiList();
+    }
+
+    function updateUpi(index, newVal) {
+        let upis = JSON.parse(localStorage.getItem("upiIds") || "[]");
+        upis[index] = newVal.trim();
+        localStorage.setItem("upiIds", JSON.stringify(upis));
+    }
+
+    function changePassword() {
+        const newPass = document.getElementById("newPass").value.trim();
+        if (!newPass) return alert("Enter a new password");
+        localStorage.setItem("adminPass", newPass);
+        alert("Password updated successfully");
+        document.getElementById("passwordBox").classList.add("hidden");
+    }
+
+    function logHistory(action, upi) {
+        let history = JSON.parse(localStorage.getItem("upiHistory") || "[]");
+        history.unshift(`${getTimestamp()} - ${action} UPI ID: ${upi}`);
+        localStorage.setItem("upiHistory", JSON.stringify(history));
+        loadHistory();
+    }
+
+    function loadHistory() {
+        const list = document.getElementById("historyLog");
+        list.innerHTML = "";
+        let history = JSON.parse(localStorage.getItem("upiHistory") || "[]");
+        history.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = item;
+            list.appendChild(li);
+        });
+    }
+</script>
+
+</body>
+</html>
